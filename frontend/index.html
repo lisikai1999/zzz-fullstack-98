@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>四杆机构运动学仿真</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Microsoft YaHei", sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        .app {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+            gap: 0;
+        }
+        header {
+            grid-column: 1 / -1;
+            background: #16213e;
+            padding: 12px 24px;
+            border-bottom: 1px solid #0f3460;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        header h1 { font-size: 20px; color: #4fc3f7; }
+        .info-bar { display: flex; gap: 16px; font-size: 13px; }
+        .info-bar .badge {
+            background: #0f3460;
+            padding: 4px 10px;
+            border-radius: 4px;
+            color: #81d4fa;
+        }
+        .sidebar {
+            background: #16213e;
+            padding: 16px;
+            overflow-y: auto;
+            border-right: 1px solid #0f3460;
+        }
+        .sidebar section { margin-bottom: 20px; }
+        .sidebar h3 {
+            color: #4fc3f7;
+            font-size: 13px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .slider-group { margin-bottom: 12px; }
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+        .slider-group label span { color: #4fc3f7; font-weight: bold; }
+        .slider-group input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #0f3460;
+            border-radius: 2px;
+            outline: none;
+        }
+        .slider-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #4fc3f7;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .btn {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #4fc3f7; color: #1a1a2e; font-weight: bold; }
+        .btn-primary:hover { background: #81d4fa; }
+        .btn-secondary { background: #0f3460; color: #81d4fa; }
+        .btn-secondary:hover { background: #1a4080; }
+        .btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+        .main-area {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: #0d1b2a;
+        }
+        .canvas-container { flex: 1; position: relative; }
+        canvas { width: 100%; height: 100%; display: block; }
+        .bottom-panel {
+            background: #16213e;
+            border-top: 1px solid #0f3460;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .angle-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4fc3f7;
+            min-width: 80px;
+        }
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #aaa;
+        }
+        .speed-control input { width: 80px; }
+        .preset-list { max-height: 150px; overflow-y: auto; }
+        .preset-item {
+            padding: 6px 10px;
+            margin-bottom: 4px;
+            background: #0f3460;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.2s;
+        }
+        .preset-item:hover { background: #1a4080; }
+        .preset-item .name { color: #4fc3f7; }
+        .preset-item .desc { color: #888; font-size: 11px; margin-top: 2px; }
+        .grashof-info {
+            background: #0f3460;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .grashof-info .type {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffd54f;
+            margin-bottom: 4px;
+        }
+        .tabs { display: flex; gap: 2px; margin-bottom: 10px; }
+        .tab {
+            padding: 6px 12px;
+            background: #0f3460;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            font-size: 12px;
+            color: #aaa;
+        }
+        .tab.active { background: #1a4080; color: #4fc3f7; }
+        .trajectory-list { max-height: 200px; overflow-y: auto; }
+        .traj-item {
+            padding: 8px 10px;
+            margin-bottom: 6px;
+            background: #0f3460;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background 0.2s;
+        }
+        .traj-item:hover { background: #1a4080; }
+        .traj-item canvas.thumb {
+            width: 60px;
+            height: 60px;
+            border-radius: 4px;
+            background: #0a1628;
+            flex-shrink: 0;
+        }
+        .traj-item .traj-info { flex: 1; }
+        .traj-item .traj-name { color: #4fc3f7; margin-bottom: 2px; }
+        .traj-item .traj-desc { color: #888; font-size: 11px; }
+        .legend {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(22, 33, 62, 0.9);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            line-height: 1.8;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .mu-bar {
+            height: 6px;
+            background: #0f3460;
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .mu-bar-fill { height: 100%; border-radius: 3px; transition: width 0.1s; }
+        #synthesis-status { font-size: 11px; color: #aaa; margin-top: 6px; }
+        .btn-primary.loading {
+            opacity: 0.6;
+            pointer-events: none;
+            position: relative;
+        }
+        .btn-primary.loading::after {
+            content: '';
+            position: absolute;
+            width: 12px; height: 12px;
+            border: 2px solid #1a1a2e;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            right: 8px; top: 50%;
+            margin-top: -6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+<div class="app">
+    <header>
+        <h1>四杆机构运动学仿真平台</h1>
+        <div class="info-bar">
+            <span class="badge" id="mech-type">--</span>
+            <span class="badge" id="mu-display">传动角: --</span>
+            <span class="badge" id="validity-badge">--</span>
+        </div>
+    </header>
+
+    <div class="sidebar">
+        <section>
+            <h3>杆长参数</h3>
+            <div class="slider-group">
+                <label>曲柄 a <span id="val-a">1.0</span></label>
+                <input type="range" id="slider-a" min="0.5" max="8" step="0.1" value="1">
+            </div>
+            <div class="slider-group">
+                <label>连杆 b <span id="val-b">3.5</span></label>
+                <input type="range" id="slider-b" min="0.5" max="10" step="0.1" value="3.5">
+            </div>
+            <div class="slider-group">
+                <label>从动件 c <span id="val-c">3.0</span></label>
+                <input type="range" id="slider-c" min="0.5" max="8" step="0.1" value="3">
+            </div>
+            <div class="slider-group">
+                <label>机架 d <span id="val-d">4.0</span></label>
+                <input type="range" id="slider-d" min="0.5" max="10" step="0.1" value="4">
+            </div>
+            <div class="slider-group">
+                <label>连杆点 Px <span id="val-px">1.8</span></label>
+                <input type="range" id="slider-px" min="-3" max="6" step="0.1" value="1.8">
+            </div>
+            <div class="slider-group">
+                <label>连杆点 Py <span id="val-py">0.8</span></label>
+                <input type="range" id="slider-py" min="-3" max="4" step="0.1" value="0.8">
+            </div>
+        </section>
+
+        <section>
+            <h3>Grashof 判定</h3>
+            <div class="grashof-info" id="grashof-panel">
+                <div class="type" id="grashof-type">--</div>
+                <div id="grashof-detail">调节杆长查看类型变化</div>
+            </div>
+        </section>
+
+        <section>
+            <h3>传动角</h3>
+            <div style="font-size:12px;color:#aaa;">当前: <span id="mu-current" style="color:#4fc3f7;">--</span></div>
+            <div class="mu-bar"><div class="mu-bar-fill" id="mu-bar-fill" style="width:50%;background:#4fc3f7;"></div></div>
+            <div style="font-size:11px;color:#666;margin-top:4px;">最小: <span id="mu-min">--</span></div>
+        </section>
+
+        <section>
+            <h3>预设机构</h3>
+            <div class="preset-list" id="preset-list"></div>
+        </section>
+
+        <section>
+            <div class="tabs">
+                <div class="tab active" data-tab="trajectory" onclick="switchTab('trajectory')">轨迹库</div>
+                <div class="tab" data-tab="synthesis" onclick="switchTab('synthesis')">轨迹综合</div>
+            </div>
+            <div id="tab-trajectory">
+                <div class="trajectory-list" id="traj-list"></div>
+            </div>
+            <div id="tab-synthesis" style="display:none;">
+                <p style="font-size:11px;color:#aaa;margin-bottom:8px;">在画布上点击绘制目标轨迹点（≥5个），然后求解最佳杆长</p>
+                <div class="btn-group">
+                    <button class="btn btn-secondary" onclick="startDrawTarget()">绘制目标点</button>
+                    <button class="btn btn-primary" id="btn-synthesis" onclick="runSynthesis()">求解杆长</button>
+                    <button class="btn btn-secondary" onclick="clearTarget()">清除</button>
+                </div>
+                <div id="synthesis-status"></div>
+            </div>
+        </section>
+    </div>
+
+    <div class="main-area">
+        <div class="canvas-container">
+            <canvas id="canvas"></canvas>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-dot" style="background:#ff5252;"></div> 曲柄 (a)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#69f0ae;"></div> 连杆 (b)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ffd740;"></div> 从动件 (c)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#888;"></div> 机架 (d)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#e040fb;"></div> 连杆曲线</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ff6e40;"></div> 死点 (卡死位)</div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ffab40;border:2px dashed #ffab40;background:transparent;"></div> 极限位置</div>
+            </div>
+        </div>
+        <div class="bottom-panel">
+            <button class="btn btn-primary" id="btn-play" onclick="togglePlay()">▶ 播放</button>
+            <button class="btn btn-secondary" onclick="stepForward()">单步 →</button>
+            <button class="btn btn-secondary" onclick="resetAngle()">复位</button>
+            <button class="btn btn-secondary" onclick="showFullTrajectory()">显示完整轨迹</button>
+            <div class="angle-display" id="angle-display">0°</div>
+            <div class="speed-control">
+                <span>速度:</span>
+                <input type="range" id="speed-slider" min="1" max="20" value="5">
+                <span id="speed-val">5°/帧</span>
+            </div>
+            <label style="font-size:12px;color:#aaa;cursor:pointer;">
+                <input type="checkbox" id="show-trace" checked> 轨迹
+            </label>
+            <label style="font-size:12px;color:#aaa;cursor:pointer;">
+                <input type="checkbox" id="show-dead-points" checked> 死点
+            </label>
+            <label style="font-size:12px;color:#aaa;cursor:pointer;">
+                <input type="checkbox" id="show-extreme" checked> 极位
+            </label>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let params = { a: 1, b: 3.5, c: 3, d: 4, coupler_x: 1.8, coupler_y: 0.8 };
+let theta2 = 0;
+let playing = false;
+let animId = null;
+let speed = 5;
+let trajectory = [];
+let fullTrajectory = null; // complete coupler curve
+let fullRotationData = null;
+let deadPoints = [];
+let extremePositions = null;
+let drawingTarget = false;
+let targetPoints = [];
+let synthesisTrajectory = null;
+
+function resizeCanvas() {
+    const container = canvas.parentElement;
+    canvas.width = container.clientWidth * window.devicePixelRatio;
+    canvas.height = container.clientHeight * window.devicePixelRatio;
+    ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+    draw();
+}
+window.addEventListener('resize', resizeCanvas);
+
+function getTransform() {
+    const w = canvas.width / window.devicePixelRatio;
+    const h = canvas.height / window.devicePixelRatio;
+    const maxBar = Math.max(params.a, params.b, params.c, params.d);
+    const scale = Math.min(w, h) / (maxBar * 4.5);
+    const cx = w * 0.35;
+    const cy = h * 0.55;
+    return { scale, cx, cy };
+}
+
+function toScreen(x, y) {
+    const { scale, cx, cy } = getTransform();
+    return [cx + x * scale, cy - y * scale];
+}
+
+function fromScreen(sx, sy) {
+    const { scale, cx, cy } = getTransform();
+    return [(sx - cx) / scale, -(sy - cy) / scale];
+}
+
+function solveLocal(theta2Rad) {
+    const { a, b, c, d } = params;
+    const Bx = a * Math.cos(theta2Rad);
+    const By = a * Math.sin(theta2Rad);
+    const BDx = d - Bx;
+    const BDy = -By;
+    const BD = Math.sqrt(BDx * BDx + BDy * BDy);
+
+    if (BD > b + c || BD < Math.abs(b - c) || BD < 1e-10) return null;
+
+    const alpha = Math.atan2(BDy, BDx);
+    let cosBeta = (b * b + BD * BD - c * c) / (2 * b * BD);
+    cosBeta = Math.max(-1, Math.min(1, cosBeta));
+    const beta = Math.acos(cosBeta);
+    const theta3 = alpha + beta;
+
+    const Cx = Bx + b * Math.cos(theta3);
+    const Cy = By + b * Math.sin(theta3);
+    const theta4 = Math.atan2(Cy, Cx - d);
+
+    let mu = Math.abs(theta3 - theta4) % Math.PI;
+    if (mu > Math.PI / 2) mu = Math.PI - mu;
+
+    const Px = Bx + params.coupler_x * Math.cos(theta3) - params.coupler_y * Math.sin(theta3);
+    const Py = By + params.coupler_x * Math.sin(theta3) + params.coupler_y * Math.cos(theta3);
+
+    return { A: [0, 0], B: [Bx, By], C: [Cx, Cy], D: [d, 0], P: [Px, Py], mu, theta3, theta4 };
+}
+
+// Compute full coupler curve locally
+function computeFullTrajectory() {
+    const pts = [];
+    for (let deg = 0; deg < 360; deg++) {
+        const state = solveLocal(deg * Math.PI / 180);
+        if (state) pts.push(state.P);
+    }
+    return pts;
+}
+
+function showFullTrajectory() {
+    fullTrajectory = computeFullTrajectory();
+    draw();
+}
+
+// === DRAWING ===
+
+function draw() {
+    const w = canvas.width / window.devicePixelRatio;
+    const h = canvas.height / window.devicePixelRatio;
+    ctx.clearRect(0, 0, w, h);
+    drawGrid(w, h);
+
+    const state = solveLocal(theta2 * Math.PI / 180);
+    if (!state) {
+        ctx.fillStyle = '#ff5252';
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('无法装配 — 杆长不满足闭合条件', w / 2, h / 2);
+        ctx.textAlign = 'left';
+        return;
+    }
+
+    // Full trajectory (one-click feature)
+    if (fullTrajectory && fullTrajectory.length > 1) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#e040fb';
+        ctx.lineWidth = 2.5;
+        ctx.globalAlpha = 0.85;
+        for (let i = 0; i <= fullTrajectory.length; i++) {
+            const pt = fullTrajectory[i % fullTrajectory.length];
+            const [sx, sy] = toScreen(pt[0], pt[1]);
+            if (i === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+    }
+
+    // Animation trajectory trace
+    if (document.getElementById('show-trace').checked && trajectory.length > 1 && !fullTrajectory) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#e040fb';
+        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.7;
+        for (let i = 0; i < trajectory.length; i++) {
+            const [sx, sy] = toScreen(trajectory[i][0], trajectory[i][1]);
+            if (i === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+    }
+
+    // Synthesis target points
+    if (targetPoints.length > 0) {
+        ctx.fillStyle = '#76ff03';
+        for (const pt of targetPoints) {
+            const [sx, sy] = toScreen(pt[0], pt[1]);
+            ctx.beginPath();
+            ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        if (targetPoints.length > 1) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(118,255,3,0.4)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < targetPoints.length; i++) {
+                const [sx, sy] = toScreen(targetPoints[i][0], targetPoints[i][1]);
+                if (i === 0) ctx.moveTo(sx, sy);
+                else ctx.lineTo(sx, sy);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
+    }
+
+    // Synthesis result trajectory
+    if (synthesisTrajectory && synthesisTrajectory.length > 1) {
+        ctx.beginPath();
+        ctx.strokeStyle = '#76ff03';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        for (let i = 0; i <= synthesisTrajectory.length; i++) {
+            const pt = synthesisTrajectory[i % synthesisTrajectory.length];
+            const [sx, sy] = toScreen(pt[0], pt[1]);
+            if (i === 0) ctx.moveTo(sx, sy);
+            else ctx.lineTo(sx, sy);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Extreme positions (draw BEFORE dead points so dead points overlay)
+    if (document.getElementById('show-extreme').checked && extremePositions && extremePositions.extreme_positions) {
+        drawExtremePositions(state);
+    }
+
+    // Dead points with prominent annotation
+    if (document.getElementById('show-dead-points').checked && deadPoints.length > 0) {
+        drawDeadPoints();
+    }
+
+    // Main linkage
+    drawLinkage(state, false);
+
+    // Coupler point
+    const [px, py] = toScreen(state.P[0], state.P[1]);
+    ctx.beginPath();
+    ctx.arc(px, py, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#e040fb';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Label P
+    ctx.fillStyle = '#e040fb';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('P', px + 10, py - 8);
+
+    // Transmission angle arc
+    drawTransmissionAngle(state);
+
+    // Update UI
+    document.getElementById('angle-display').textContent = Math.round(theta2) + '°';
+    document.getElementById('mu-current').textContent = (state.mu * 180 / Math.PI).toFixed(1) + '°';
+    document.getElementById('mu-display').textContent = '传动角: ' + (state.mu * 180 / Math.PI).toFixed(1) + '°';
+
+    const muPercent = (state.mu / (Math.PI / 2)) * 100;
+    const muFill = document.getElementById('mu-bar-fill');
+    muFill.style.width = Math.min(100, muPercent) + '%';
+    muFill.style.background = muPercent < 40 ? '#ff5252' : muPercent < 70 ? '#ffd740' : '#69f0ae';
+}
+
+function drawGrid(w, h) {
+    const { scale, cx, cy } = getTransform();
+    ctx.strokeStyle = '#1e3a5f';
+    ctx.lineWidth = 0.5;
+    const step = scale;
+    for (let x = cx % step; x < w; x += step) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+    for (let y = cy % step; y < h; y += step) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+    ctx.strokeStyle = '#2a5080';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
+}
+
+function drawLinkage(state, ghost) {
+    const [ax, ay] = toScreen(...state.A);
+    const [bx, by] = toScreen(...state.B);
+    const [cx2, cy2] = toScreen(...state.C);
+    const [dx, dy] = toScreen(...state.D);
+    const lineWidth = ghost ? 1.5 : 3;
+
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(dx, dy);
+    ctx.strokeStyle = ghost ? 'rgba(136,136,136,0.3)' : '#888';
+    ctx.lineWidth = lineWidth; ctx.stroke();
+
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+    ctx.strokeStyle = ghost ? 'rgba(255,82,82,0.3)' : '#ff5252';
+    ctx.lineWidth = lineWidth; ctx.stroke();
+
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(cx2, cy2);
+    ctx.strokeStyle = ghost ? 'rgba(105,240,174,0.3)' : '#69f0ae';
+    ctx.lineWidth = lineWidth; ctx.stroke();
+
+    ctx.beginPath(); ctx.moveTo(cx2, cy2); ctx.lineTo(dx, dy);
+    ctx.strokeStyle = ghost ? 'rgba(255,215,64,0.3)' : '#ffd740';
+    ctx.lineWidth = lineWidth; ctx.stroke();
+
+    if (!ghost) {
+        for (const [jx, jy] of [[ax, ay], [bx, by], [cx2, cy2], [dx, dy]]) {
+            ctx.beginPath();
+            ctx.arc(jx, jy, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.strokeStyle = '#0d1b2a';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        // Ground hatching
+        for (const [gx, gy] of [[ax, ay], [dx, dy]]) {
+            ctx.beginPath();
+            ctx.moveTo(gx - 10, gy + 8);
+            ctx.lineTo(gx + 10, gy + 8);
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            for (let i = -10; i <= 10; i += 5) {
+                ctx.beginPath();
+                ctx.moveTo(gx + i, gy + 8);
+                ctx.lineTo(gx + i - 4, gy + 14);
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+    }
+}
+
+function drawDeadPoints() {
+    const w = canvas.width / window.devicePixelRatio;
+    const h = canvas.height / window.devicePixelRatio;
+
+    for (let idx = 0; idx < deadPoints.length; idx++) {
+        const dp = deadPoints[idx];
+        const dpState = solveLocal(dp.theta2_deg * Math.PI / 180);
+        if (!dpState) continue;
+
+        ctx.save();
+
+        // Draw ghost linkage at dead point position
+        ctx.strokeStyle = '#ff6e40';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 3]);
+        drawLinkage(dpState, true);
+        ctx.setLineDash([]);
+
+        // Determine marker point: for crank-coupler dead points, mark at B (collinear joint)
+        // For other types, mark at C
+        let markerPt;
+        if (dp.type === 'crank_coupler_collinear') {
+            markerPt = toScreen(...dpState.B);
+        } else {
+            markerPt = toScreen(...dpState.C);
+        }
+        const [mx, my] = markerPt;
+
+        // Large X marker
+        const sz = 14;
+        ctx.strokeStyle = '#ff6e40';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(mx - sz, my - sz); ctx.lineTo(mx + sz, my + sz);
+        ctx.moveTo(mx + sz, my - sz); ctx.lineTo(mx - sz, my + sz);
+        ctx.stroke();
+
+        // Animated-looking double circle
+        ctx.beginPath();
+        ctx.arc(mx, my, 22, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ff6e40';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(mx, my, 28, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,110,64,0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Find a non-overlapping label position
+        // Place label away from the linkage center (push outward from canvas center)
+        const centerX = w / 2;
+        const centerY = h / 2;
+        let labelDir = Math.atan2(my - centerY, mx - centerX);
+        // Alternate sides for multiple dead points to avoid overlap
+        if (idx % 2 === 1) labelDir += Math.PI * 0.3;
+        const labelDist = 45;
+        let labelX = mx + labelDist * Math.cos(labelDir);
+        let labelY = my + labelDist * Math.sin(labelDir);
+
+        // Keep label within canvas bounds
+        const boxW = 180;
+        const boxH = 50;
+        labelX = Math.max(boxW / 2 + 5, Math.min(w - boxW / 2 - 5, labelX));
+        labelY = Math.max(20, Math.min(h - boxH - 5, labelY));
+
+        // Text background
+        ctx.fillStyle = 'rgba(13, 27, 42, 0.92)';
+        const bx = labelX - 4;
+        const by = labelY - 14;
+        ctx.fillRect(bx, by, boxW, boxH);
+        ctx.strokeStyle = '#ff6e40';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(bx, by, boxW, boxH);
+
+        // Leader line from marker to label
+        ctx.beginPath();
+        ctx.moveTo(mx, my);
+        ctx.lineTo(labelX + 10, labelY + boxH / 2 - 14);
+        ctx.strokeStyle = 'rgba(255,110,64,0.5)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Title
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 13px "Microsoft YaHei", sans-serif';
+        ctx.fillStyle = '#ff6e40';
+        ctx.fillText('⚠ ' + (dp.description || '死点'), bx + 6, by + 16);
+
+        // Angle info
+        ctx.font = '11px "Microsoft YaHei", sans-serif';
+        ctx.fillStyle = '#ffab91';
+        const muText = dp.mu_deg !== undefined ? `μ=${dp.mu_deg.toFixed(1)}°` : '';
+        ctx.fillText(`θ₂=${dp.theta2_deg.toFixed(1)}° ${muText}`, bx + 6, by + 31);
+
+        // Reason (use detail from backend if available)
+        ctx.fillStyle = '#ffcc80';
+        const reason = dp.detail || (dp.type === 'assembly_limit' ? '杆长无法满足封闭条件' : '从动件无法驱动曲柄');
+        ctx.fillText(reason, bx + 6, by + 44);
+
+        ctx.restore();
+    }
+}
+
+function drawExtremePositions(currentState) {
+    if (!extremePositions || !extremePositions.extreme_positions) return;
+    const eps = extremePositions.extreme_positions;
+    if (eps.length < 2) return;
+
+    const w = canvas.width / window.devicePixelRatio;
+    const h = canvas.height / window.devicePixelRatio;
+    const { scale } = getTransform();
+    const [dx, dy] = toScreen(params.d, 0);
+    const [ax, ay] = toScreen(0, 0);
+
+    // Draw both extreme position linkages
+    for (let i = 0; i < eps.length; i++) {
+        const ep = eps[i];
+        const epState = solveLocal(ep.theta2_deg * Math.PI / 180);
+        if (!epState) continue;
+
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.strokeStyle = '#ffab40';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([5, 5]);
+        drawLinkage(epState, true);
+        ctx.setLineDash([]);
+
+        // Mark follower endpoint C with small label
+        const [cx2, cy2] = toScreen(...epState.C);
+        ctx.globalAlpha = 0.8;
+        ctx.font = '10px "Microsoft YaHei", sans-serif';
+        ctx.fillStyle = '#ffab40';
+        ctx.textAlign = 'center';
+        // Offset label away from the ground pivot D
+        const dirFromD = Math.atan2(cy2 - dy, cx2 - dx);
+        const lblOff = 18;
+        ctx.fillText(
+            ep.type === 'max' ? '极位₁' : '极位₂',
+            cx2 + lblOff * Math.cos(dirFromD),
+            cy2 + lblOff * Math.sin(dirFromD)
+        );
+
+        ctx.restore();
+    }
+
+    // Draw the extreme angle arc between two crank positions (极位夹角)
+    if (eps.length === 2) {
+        const angle1 = -eps[0].theta2_deg * Math.PI / 180;
+        const angle2 = -eps[1].theta2_deg * Math.PI / 180;
+        const r = 38;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(ax, ay, r, angle1, angle2, false);
+        ctx.strokeStyle = '#ffab40';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Small arrowheads at arc ends
+        const arrowSize = 6;
+        for (const endAngle of [angle2]) {
+            const ex = ax + r * Math.cos(endAngle);
+            const ey = ay + r * Math.sin(endAngle);
+            const tangent = endAngle + Math.PI / 2;
+            ctx.beginPath();
+            ctx.moveTo(ex, ey);
+            ctx.lineTo(ex - arrowSize * Math.cos(tangent - 0.4), ey - arrowSize * Math.sin(tangent - 0.4));
+            ctx.moveTo(ex, ey);
+            ctx.lineTo(ex - arrowSize * Math.cos(tangent + 0.4), ey - arrowSize * Math.sin(tangent + 0.4));
+            ctx.stroke();
+        }
+
+        // Find non-overlapping position for the annotation box
+        // Strategy: place in the quadrant that has the least linkage geometry
+        // Compute midpoint of the arc, then push outward
+        const midAngle = (angle1 + angle2) / 2;
+        // Check if all linkage points are above or below; place label on opposite side
+        const allJoints = [ax, ay, dx, dy, ...toScreen(...currentState.B), ...toScreen(...currentState.C)];
+        const jointYs = [ay, dy, toScreen(...currentState.B)[1], toScreen(...currentState.C)[1]];
+        const avgJointY = jointYs.reduce((a, b) => a + b, 0) / jointYs.length;
+
+        // Place box in the emptier vertical half
+        const boxW = 155;
+        const boxH = 38;
+        let tx, ty;
+
+        // Prefer bottom-right corner if linkage is mostly upper-left, etc.
+        if (avgJointY < h / 2) {
+            // Linkage mostly in upper half, place label below
+            ty = Math.min(h - boxH - 10, ay + r + 50);
+        } else {
+            // Linkage in lower half, place label above
+            ty = Math.max(10, ay - r - 50 - boxH);
+        }
+        // Horizontally: place near ground pivot A but offset
+        tx = Math.max(10, Math.min(w - boxW - 10, ax - boxW / 2));
+
+        // Background
+        ctx.fillStyle = 'rgba(13, 27, 42, 0.92)';
+        ctx.fillRect(tx, ty, boxW, boxH);
+        ctx.strokeStyle = '#ffab40';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(tx, ty, boxW, boxH);
+
+        // Leader line from arc to box
+        const arcMidX = ax + r * Math.cos(midAngle);
+        const arcMidY = ay + r * Math.sin(midAngle);
+        ctx.beginPath();
+        ctx.moveTo(arcMidX, arcMidY);
+        ctx.lineTo(tx + boxW / 2, ty + (ty > ay ? 0 : boxH));
+        ctx.strokeStyle = 'rgba(255,171,64,0.4)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Text
+        ctx.font = 'bold 12px "Microsoft YaHei", sans-serif';
+        ctx.fillStyle = '#ffab40';
+        ctx.textAlign = 'left';
+        ctx.fillText(`极位夹角 θ=${extremePositions.extreme_angle_deg.toFixed(1)}°`, tx + 6, ty + 15);
+        ctx.font = '11px "Microsoft YaHei", sans-serif';
+        ctx.fillStyle = '#ffd180';
+        const K = extremePositions.travel_ratio;
+        const Ktext = K > 100 ? 'K→∞' : `K=${K.toFixed(2)}`;
+        ctx.fillText(`摆角=${extremePositions.swing_angle_deg.toFixed(1)}°  ${Ktext}`, tx + 6, ty + 31);
+
+        ctx.restore();
+    }
+}
+
+function drawTransmissionAngle(state) {
+    const [cx2, cy2] = toScreen(...state.C);
+    const r = 22;
+    const angleBC = Math.atan2(state.B[1] - state.C[1], state.B[0] - state.C[0]);
+    const angleCD = Math.atan2(state.D[1] - state.C[1], state.D[0] - state.C[0]);
+
+    ctx.beginPath();
+    ctx.arc(cx2, cy2, r, -angleCD, -angleBC, angleBC > angleCD);
+    ctx.strokeStyle = 'rgba(79, 195, 247, 0.7)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Label μ
+    const midA = (-angleCD + -angleBC) / 2;
+    const lx = cx2 + (r + 10) * Math.cos(midA);
+    const ly = cy2 + (r + 10) * Math.sin(midA);
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = '#4fc3f7';
+    ctx.textAlign = 'center';
+    ctx.fillText('μ', lx, ly + 4);
+    ctx.textAlign = 'left';
+}
+
+// === ANIMATION ===
+
+function animate() {
+    theta2 = (theta2 + speed) % 360;
+    const state = solveLocal(theta2 * Math.PI / 180);
+    if (state) {
+        trajectory.push(state.P);
+        if (trajectory.length > 360) trajectory.shift();
+    }
+    draw();
+    if (playing) animId = requestAnimationFrame(animate);
+}
+
+function togglePlay() {
+    playing = !playing;
+    document.getElementById('btn-play').textContent = playing ? '⏸ 暂停' : '▶ 播放';
+    if (playing) {
+        trajectory = [];
+        fullTrajectory = null;
+        animate();
+    } else {
+        cancelAnimationFrame(animId);
+    }
+}
+
+function stepForward() {
+    theta2 = (theta2 + 1) % 360;
+    const state = solveLocal(theta2 * Math.PI / 180);
+    if (state) trajectory.push(state.P);
+    draw();
+}
+
+function resetAngle() {
+    theta2 = 0;
+    trajectory = [];
+    fullTrajectory = null;
+    draw();
+}
+
+// === SLIDERS ===
+
+const sliders = ['a', 'b', 'c', 'd', 'px', 'py'];
+const sliderKeys = ['a', 'b', 'c', 'd', 'coupler_x', 'coupler_y'];
+
+sliders.forEach((id, i) => {
+    const slider = document.getElementById('slider-' + id);
+    slider.addEventListener('input', () => {
+        const val = parseFloat(slider.value);
+        params[sliderKeys[i]] = val;
+        document.getElementById('val-' + id).textContent = val.toFixed(1);
+        trajectory = [];
+        fullTrajectory = null;
+        updateGrashof();
+        fetchFullRotation();
+        draw();
+    });
+});
+
+document.getElementById('speed-slider').addEventListener('input', (e) => {
+    speed = parseInt(e.target.value);
+    document.getElementById('speed-val').textContent = speed + '°/帧';
+});
+
+// === GRASHOF ===
+
+function updateGrashof() {
+    const { a, b, c, d } = params;
+    const lengths = [a, b, c, d].sort((x, y) => x - y);
+    const [s, p, q, l] = lengths;
+    const isGrashof = s + l <= p + q;
+    const isChangePoint = s + l === p + q;
+
+    const bars = [a, b, c, d];
+    const shortest = bars.indexOf(Math.min(...bars));
+    const suffix = isChangePoint ? '（变换点）' : '';
+
+    let type, desc;
+    if (!isGrashof) {
+        type = '双摇杆';
+        desc = `不满足Grashof条件 (s+l=${(s+l).toFixed(1)} > p+q=${(p+q).toFixed(1)})，无杆可整转`;
+    } else if (shortest === 0) {
+        type = '曲柄摇杆';
+        desc = `最短杆为曲柄(a)，曲柄可整转${suffix}`;
+    } else if (shortest === 3) {
+        type = '双曲柄';
+        desc = `最短杆为机架(d)，两侧杆均可整转${suffix}`;
+    } else if (shortest === 1) {
+        type = '双摇杆(G)';
+        desc = `满足Grashof但最短杆为连杆${suffix}`;
+    } else {
+        type = '曲柄摇杆';
+        desc = `最短杆为从动件(c)，曲柄可整转${suffix}`;
+    }
+
+    document.getElementById('grashof-type').textContent = type;
+    document.getElementById('grashof-detail').textContent = desc;
+    document.getElementById('mech-type').textContent = type;
+
+    const canRotate = isGrashof && (shortest === 0 || shortest === 2);
+    document.getElementById('validity-badge').textContent = canRotate ? '可整转' : '受限运动';
+    document.getElementById('validity-badge').style.background = canRotate ? '#1b5e20' : '#b71c1c';
+}
+
+// === BACKEND DATA ===
+
+async function fetchFullRotation() {
+    try {
+        const resp = await fetch(API + '/full_rotation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+        });
+        if (resp.ok) {
+            fullRotationData = await resp.json();
+            deadPoints = fullRotationData.dead_points || [];
+            extremePositions = fullRotationData.extreme_positions || null;
+            if (fullRotationData.min_transmission_angle !== undefined) {
+                document.getElementById('mu-min').textContent = fullRotationData.min_transmission_angle.toFixed(1) + '°';
+            }
+            draw();
+        }
+    } catch (e) {
+        console.warn('Backend not available, using local solver only');
+    }
+}
+
+// === PRESETS ===
+
+async function loadPresets() {
+    try {
+        const resp = await fetch(API + '/presets');
+        if (!resp.ok) return;
+        const presets = await resp.json();
+        const list = document.getElementById('preset-list');
+        list.innerHTML = '';
+        for (const p of presets) {
+            const div = document.createElement('div');
+            div.className = 'preset-item';
+            div.innerHTML = `<div class="name">${p.name}</div><div class="desc">${p.description || ''}</div>`;
+            div.onclick = () => applyPreset(p);
+            list.appendChild(div);
+        }
+    } catch (e) {}
+}
+
+function applyPreset(p) {
+    params = { a: p.a, b: p.b, c: p.c, d: p.d, coupler_x: p.coupler_x, coupler_y: p.coupler_y };
+    sliders.forEach((id, i) => {
+        const slider = document.getElementById('slider-' + id);
+        slider.value = params[sliderKeys[i]];
+        document.getElementById('val-' + id).textContent = params[sliderKeys[i]].toFixed(1);
+    });
+    trajectory = [];
+    fullTrajectory = null;
+    updateGrashof();
+    fetchFullRotation();
+    draw();
+}
+
+// === TRAJECTORY LIBRARY WITH THUMBNAILS ===
+
+async function loadTrajectories() {
+    try {
+        const resp = await fetch(API + '/trajectories');
+        if (!resp.ok) return;
+        const trajs = await resp.json();
+        const list = document.getElementById('traj-list');
+        list.innerHTML = '';
+        for (const t of trajs) {
+            const div = document.createElement('div');
+            div.className = 'traj-item';
+
+            // Thumbnail canvas — high DPI for crisp rendering
+            const thumbCanvas = document.createElement('canvas');
+            thumbCanvas.className = 'thumb';
+            thumbCanvas.width = 200;
+            thumbCanvas.height = 200;
+            drawThumbnail(thumbCanvas, t.points);
+
+            const info = document.createElement('div');
+            info.className = 'traj-info';
+            info.innerHTML = `<div class="traj-name">${t.name}</div><div class="traj-desc">${t.description || ''}</div>`;
+
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-secondary';
+            btn.style.cssText = 'padding:4px 8px;font-size:11px;flex-shrink:0;';
+            btn.textContent = '用作目标';
+            btn.onclick = (e) => { e.stopPropagation(); useTrajAsSynthesisTarget(t.points); };
+
+            div.appendChild(thumbCanvas);
+            div.appendChild(info);
+            div.appendChild(btn);
+            list.appendChild(div);
+        }
+    } catch (e) {}
+}
+
+function drawThumbnail(cvs, points) {
+    const tctx = cvs.getContext('2d');
+    const w = cvs.width;
+    const h = cvs.height;
+
+    tctx.fillStyle = '#0a1628';
+    tctx.fillRect(0, 0, w, h);
+
+    if (!points || points.length < 2) return;
+
+    // Find bounds
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const [x, y] of points) {
+        minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+        minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    }
+    const rangeX = maxX - minX || 1;
+    const rangeY = maxY - minY || 1;
+    const padding = 20;
+    const scale = Math.min((w - padding * 2) / rangeX, (h - padding * 2) / rangeY);
+    const offX = (w - rangeX * scale) / 2;
+    const offY = (h - rangeY * scale) / 2;
+
+    // Draw closed curve with anti-aliased line
+    tctx.beginPath();
+    tctx.strokeStyle = '#e040fb';
+    tctx.lineWidth = 3;
+    tctx.lineJoin = 'round';
+    tctx.lineCap = 'round';
+    for (let i = 0; i <= points.length; i++) {
+        const [x, y] = points[i % points.length];
+        const sx = offX + (x - minX) * scale;
+        const sy = offY + (maxY - y) * scale;
+        if (i === 0) tctx.moveTo(sx, sy);
+        else tctx.lineTo(sx, sy);
+    }
+    tctx.stroke();
+
+    // Draw individual points as dots for visibility
+    tctx.fillStyle = '#ce93d8';
+    for (const [x, y] of points) {
+        const sx = offX + (x - minX) * scale;
+        const sy = offY + (maxY - y) * scale;
+        tctx.beginPath();
+        tctx.arc(sx, sy, 3, 0, Math.PI * 2);
+        tctx.fill();
+    }
+}
+
+function useTrajAsSynthesisTarget(points) {
+    targetPoints = points;
+    switchTab('synthesis');
+    document.getElementById('synthesis-status').textContent = `已加载 ${points.length} 个目标点`;
+    draw();
+}
+
+// === SYNTHESIS ===
+
+function startDrawTarget() {
+    drawingTarget = true;
+    targetPoints = [];
+    synthesisTrajectory = null;
+    canvas.style.cursor = 'crosshair';
+    document.getElementById('synthesis-status').textContent = '点击画布添加目标点，完成后点"求解杆长"';
+}
+
+function clearTarget() {
+    targetPoints = [];
+    synthesisTrajectory = null;
+    drawingTarget = false;
+    canvas.style.cursor = 'default';
+    document.getElementById('synthesis-status').textContent = '';
+    draw();
+}
+
+canvas.addEventListener('click', (e) => {
+    if (!drawingTarget) return;
+    const rect = canvas.getBoundingClientRect();
+    const sx = e.clientX - rect.left;
+    const sy = e.clientY - rect.top;
+    const [wx, wy] = fromScreen(sx, sy);
+    targetPoints.push([wx, wy]);
+    document.getElementById('synthesis-status').textContent = `已添加 ${targetPoints.length} 个点（≥5个可求解）`;
+    draw();
+});
+
+async function runSynthesis() {
+    if (targetPoints.length < 5) {
+        document.getElementById('synthesis-status').textContent = '至少需要5个目标点！';
+        return;
+    }
+    const btn = document.getElementById('btn-synthesis');
+    btn.classList.add('loading');
+    btn.textContent = '求解中...';
+    document.getElementById('synthesis-status').textContent = '正在多起点优化，通常3~5秒...';
+    drawingTarget = false;
+    canvas.style.cursor = 'default';
+
+    try {
+        const resp = await fetch(API + '/synthesis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target_points: targetPoints, iterations: 400 })
+        });
+        if (resp.ok) {
+            const result = await resp.json();
+            synthesisTrajectory = result.trajectory;
+            const p = result.params;
+            document.getElementById('synthesis-status').innerHTML =
+                `<span style="color:#76ff03;">求解完成！</span> 误差=${result.error.toFixed(4)}<br>` +
+                `a=${p.a.toFixed(2)} b=${p.b.toFixed(2)} c=${p.c.toFixed(2)} d=${p.d.toFixed(2)} | ${result.grashof.type}`;
+
+            params = { a: p.a, b: p.b, c: p.c, d: p.d, coupler_x: p.coupler_x, coupler_y: p.coupler_y };
+            sliders.forEach((id, i) => {
+                const slider = document.getElementById('slider-' + id);
+                const val = params[sliderKeys[i]];
+                if (val >= parseFloat(slider.min) && val <= parseFloat(slider.max)) {
+                    slider.value = val;
+                }
+                document.getElementById('val-' + id).textContent = val.toFixed(1);
+            });
+            updateGrashof();
+            fetchFullRotation();
+            draw();
+        } else {
+            const err = await resp.json();
+            document.getElementById('synthesis-status').textContent = '求解失败: ' + (err.detail || '未知错误');
+        }
+    } catch (e) {
+        document.getElementById('synthesis-status').textContent = '网络错误，确保后端运行中';
+    } finally {
+        btn.classList.remove('loading');
+        btn.textContent = '求解杆长';
+    }
+}
+
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.tab[data-tab="${name}"]`).classList.add('active');
+    document.getElementById('tab-trajectory').style.display = name === 'trajectory' ? 'block' : 'none';
+    document.getElementById('tab-synthesis').style.display = name === 'synthesis' ? 'block' : 'none';
+}
+
+// === INIT ===
+resizeCanvas();
+updateGrashof();
+fetchFullRotation();
+loadPresets();
+loadTrajectories();
+</script>
+</body>
+</html>
